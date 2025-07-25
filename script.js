@@ -1,180 +1,122 @@
 document.addEventListener('DOMContentLoaded', function() {
     // Dados das peneiras (deve ser o mesmo que peneiras-data.js)
     const peneirasData = [
-        {
-            id: 1,
-            titulo: "Peneira Sub-15 e Sub-17",
-            clube: "Santos FC",
-            data: "2024-08-15",
-            horario: "14:00",
-            categoria: "Sub-15, Sub-17",
-            requisitos: "Idade entre 13-17 anos",
-            contato: "(13) 3257-4000",
-            endereco: "Vila Belmiro, Santos - SP",
-            vagasDisponiveis: 8,
-            totalVagas: 50,
-            prazoInscricao: "2024-08-10",
-            status: "aberta",
-            taxa: "R$ 50,00"
-        },
-        {
-            id: 2,
-            titulo: "Peneira Categoria de Base",
-            clube: "São Paulo FC",
-            data: "2024-08-20",
-            horario: "09:00",
-            categoria: "Sub-13, Sub-15",
-            requisitos: "Idade entre 11-15 anos",
-            contato: "(11) 3670-8100",
-            endereco: "CT Barra Funda, São Paulo - SP",
-            vagasDisponiveis: 0,
-            totalVagas: 40,
-            prazoInscricao: "2024-08-15",
-            status: "encerrada",
-            taxa: "R$ 45,00"
-        },
-        {
-            id: 3,
-            titulo: "Peneira Feminina",
-            clube: "Corinthians",
-            data: "2024-08-25",
-            horario: "15:30",
-            categoria: "Sub-16, Sub-18",
-            requisitos: "Idade entre 14-18 anos (feminino)",
-            contato: "(11) 2095-3000",
-            endereco: "CT Joaquim Grava, São Paulo - SP",
-            vagasDisponiveis: 3,
-            totalVagas: 30,
-            prazoInscricao: "2024-08-20",
-            status: "aberta",
-            taxa: "R$ 40,00"
-        },
-        {
-            id: 4,
-            titulo: "Peneira Juvenil",
-            clube: "Palmeiras",
-            data: "2024-09-01",
-            horario: "10:00",
-            categoria: "Sub-17, Sub-20",
-            requisitos: "Idade entre 15-20 anos",
-            contato: "(11) 3873-2400",
-            endereco: "Academia de Futebol, São Paulo - SP",
-            vagasDisponiveis: 15,
-            totalVagas: 60,
-            prazoInscricao: "2024-08-28",
-            status: "aberta",
-            taxa: "R$ 60,00"
-        },
-        {
-            id: 5,
-            titulo: "Peneira Regional",
-            clube: "Red Bull Bragantino",
-            data: "2024-09-05",
-            horario: "13:00",
-            categoria: "Sub-14, Sub-16",
-            requisitos: "Idade entre 12-16 anos",
-            contato: "(11) 4034-1900",
-            endereco: "CT Red Bull, Bragança Paulista - SP",
-            vagasDisponiveis: 0,
-            totalVagas: 25,
-            prazoInscricao: "2024-09-01",
-            status: "encerrada",
-            taxa: "R$ 35,00"
-        },
-        {
-            id: 6,
-            titulo: "Peneira Escolar",
-            clube: "Ponte Preta",
-            data: "2024-09-10",
-            horario: "14:30",
-            categoria: "Sub-13, Sub-15",
-            requisitos: "Idade entre 11-15 anos",
-            contato: "(19) 3231-3444",
-            endereco: "Estádio Moisés Lucarelli, Campinas - SP",
-            vagasDisponiveis: 22,
-            totalVagas: 35,
-            prazoInscricao: "2024-09-07",
-            status: "aberta",
-            taxa: "R$ 30,00"
-        }
-    ];
-
-    // Função para obter parâmetro da URL
-    function getURLParameter(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(name);
+    {
+        id: 1,
+        titulo: "Peneira Sub-15 e Sub-17",
+        clube: "Santos FC",
+        endereco: null, // Será preenchido com o CEP do usuário
+        data: "2024-08-15",
+        horario: "14:00",
+        categoria: "Sub-15, Sub-17",
+        requisitos: "Idade entre 13-17 anos",
+        contato: "(13) 3257-4000",
+        distancia: 2.5,
+        lat: -23.9618,
+        lng: -46.3322,
+        status: "aberta",
+        vagasDisponiveis: 8,
+        totalVagas: 50,
+        prazoInscricao: "2024-08-10",
+        inscricaoEncerrada: false
+    },
+    {
+        id: 2,
+        titulo: "Peneira Categoria de Base",
+        clube: "São Paulo FC",
+        endereco: null, // Será preenchido com o CEP do usuário
+        data: "2024-08-20",
+        horario: "09:00",
+        categoria: "Sub-13, Sub-15",
+        requisitos: "Idade entre 11-15 anos",
+        contato: "(11) 3670-8100",
+        distancia: 5.8,
+        lat: -23.5505,
+        lng: -46.6333,
+        status: "encerrada",
+        vagasDisponiveis: 0,
+        totalVagas: 40,
+        prazoInscricao: "2024-08-15",
+        inscricaoEncerrada: true
+    },
+    {
+        id: 3,
+        titulo: "Peneira Feminina",
+        clube: "Corinthians",
+        endereco: null, // Será preenchido com o CEP do usuário
+        data: "2024-08-25",
+        horario: "15:30",
+        categoria: "Sub-16, Sub-18",
+        requisitos: "Idade entre 14-18 anos (feminino)",
+        contato: "(11) 2095-3000",
+        distancia: 8.2,
+        lat: -23.5629,
+        lng: -46.6544,
+        status: "aberta",
+        vagasDisponiveis: 3,
+        totalVagas: 30,
+        prazoInscricao: "2024-08-20",
+        inscricaoEncerrada: false
+    },
+    {
+        id: 4,
+        titulo: "Peneira Juvenil",
+        clube: "Palmeiras",
+        endereco: null, // Será preenchido com o CEP do usuário
+        data: "2024-09-01",
+        horario: "10:00",
+        categoria: "Sub-17, Sub-20",
+        requisitos: "Idade entre 15-20 anos",
+        contato: "(11) 3873-2400",
+        distancia: 12.1,
+        lat: -23.5629,
+        lng: -46.6544,
+        status: "aberta",
+        vagasDisponiveis: 15,
+        totalVagas: 60,
+        prazoInscricao: "2024-08-28",
+        inscricaoEncerrada: false
+    },
+    {
+        id: 5,
+        titulo: "Peneira Regional",
+        clube: "Red Bull Bragantino",
+        endereco: null, // Será preenchido com o CEP do usuário
+        data: "2024-09-05",
+        horario: "13:00",
+        categoria: "Sub-14, Sub-16",
+        requisitos: "Idade entre 12-16 anos",
+        contato: "(11) 4034-1900",
+        distancia: 45.3,
+        lat: -22.9519,
+        lng: -46.5428,
+        status: "encerrada",
+        vagasDisponiveis: 0,
+        totalVagas: 25,
+        prazoInscricao: "2024-09-01",
+        inscricaoEncerrada: true
+    },
+    {
+        id: 6,
+        titulo: "Peneira Escolar",
+        clube: "Ponte Preta",
+        endereco: null, // Será preenchido com o CEP do usuário
+        data: "2024-09-10",
+        horario: "14:30",
+        categoria: "Sub-13, Sub-15",
+        requisitos: "Idade entre 11-15 anos",
+        contato: "(19) 3231-3444",
+        distancia: 35.7,
+        lat: -22.9056,
+        lng: -47.0608,
+        status: "aberta",
+        vagasDisponiveis: 22,
+        totalVagas: 35,
+        prazoInscricao: "2024-09-07",
+        inscricaoEncerrada: false
     }
-
-    // Função para formatar data
-    function formatarData(dataString) {
-        const data = new Date(dataString);
-        return data.toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric"
-        });
-    }
-
-    // Função para obter status em português
-    function getStatusTexto(status) {
-        const statusMap = {
-            "aberta": "Inscrições Abertas",
-            "encerrada": "Inscrições Encerradas",
-            "em_breve": "Em Breve"
-        };
-        return statusMap[status] || "Status não definido";
-    }
-
-    // Função para obter cor do status
-    function getStatusCor(status) {
-        const corMap = {
-            "aberta": "var(--success-color)",
-            "encerrada": "var(--error-color)",
-            "em_breve": "var(--gray-500)"
-        };
-        return corMap[status] || "var(--gray-500)";
-    }
-
-    // Preencher informações da peneira no formulário
-    const peneiraId = getURLParameter("peneira");
-    const infoPeneiraDiv = document.getElementById("info-peneira");
-
-    if (peneiraId) {
-        const peneira = peneirasData.find(p => p.id === parseInt(peneiraId));
-
-        if (peneira) {
-            infoPeneiraDiv.innerHTML = `
-                <h2>Informações da Peneira</h2>
-                <p><strong>Título:</strong> ${peneira.titulo}</p>
-                <p><strong>Clube:</strong> ${peneira.clube}</p>
-                <p><strong>Data:</strong> ${formatarData(peneira.data)}</p>
-                <p><strong>Horário:</strong> ${peneira.horario}</p>
-                <p><strong>Categoria:</strong> ${peneira.categoria}</p>
-                <p><strong>Requisitos:</strong> ${peneira.requisitos}</p>
-                <p><strong>Contato:</strong> ${peneira.contato}</p>
-                <p><strong>Endereço:</strong> ${peneira.endereco}</p>
-                <p><strong>Vagas Disponíveis:</strong> ${peneira.vagasDisponiveis} de ${peneira.totalVagas}</p>
-                <p><strong>Prazo de Inscrição:</strong> ${formatarData(peneira.prazoInscricao)}</p>
-                <p><strong>Status:</strong> <span style="color: ${getStatusCor(peneira.status)};">${getStatusTexto(peneira.status)}</span></p>
-                <p><strong>Taxa de Inscrição:</strong> ${peneira.taxa}</p>
-            `;
-        } else {
-            infoPeneiraDiv.innerHTML = `
-                <h2>Peneira Não Encontrada</h2>
-                <p>O ID da peneira especificado na URL não corresponde a nenhuma peneira em nossos registros.</p>
-                <p>Por favor, verifique o link ou entre em contato para mais informações.</p>
-            `;
-        }
-    } else {
-        infoPeneiraDiv.innerHTML = `
-            <h2>Informações da Peneira</h2>
-            <p>Nenhuma peneira específica foi selecionada. Por favor, use o link fornecido pela página de listagem de peneiras para preencher este formulário.</p>
-            <p>Exemplo de uso: <code>seu-formulario.html?peneira=1</code></p>
-        `;
-    }
-});
-
-
+];
+    
 // Cache para armazenar endereços já consultados
 const enderecoCache = new Map();
 
@@ -958,3 +900,79 @@ function setupScrollAnimations() {
     const animatedElements = document.querySelectorAll('.step-card, .feature-card, .testimonial-card');
     animatedElements.forEach(el => observer.observe(el));
 }
+
+                          // Função para obter parâmetro da URL
+    function getURLParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    // Função para formatar data
+    function formatarData(dataString) {
+        const data = new Date(dataString);
+        return data.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+        });
+    }
+
+    // Função para obter status em português
+    function getStatusTexto(status) {
+        const statusMap = {
+            "aberta": "Inscrições Abertas",
+            "encerrada": "Inscrições Encerradas",
+            "em_breve": "Em Breve"
+        };
+        return statusMap[status] || "Status não definido";
+    }
+
+    // Função para obter cor do status
+    function getStatusCor(status) {
+        const corMap = {
+            "aberta": "var(--success-color)",
+            "encerrada": "var(--error-color)",
+            "em_breve": "var(--gray-500)"
+        };
+        return corMap[status] || "var(--gray-500)";
+    }
+
+    // Preencher informações da peneira no formulário
+    const peneiraId = getURLParameter("peneira");
+    const infoPeneiraDiv = document.getElementById("info-peneira");
+
+    if (peneiraId) {
+        const peneira = peneirasData.find(p => p.id === parseInt(peneiraId));
+
+        if (peneira) {
+            infoPeneiraDiv.innerHTML = `
+                <h2>Informações da Peneira</h2>
+                <p><strong>Título:</strong> ${peneira.titulo}</p>
+                <p><strong>Clube:</strong> ${peneira.clube}</p>
+                <p><strong>Data:</strong> ${formatarData(peneira.data)}</p>
+                <p><strong>Horário:</strong> ${peneira.horario}</p>
+                <p><strong>Categoria:</strong> ${peneira.categoria}</p>
+                <p><strong>Requisitos:</strong> ${peneira.requisitos}</p>
+                <p><strong>Contato:</strong> ${peneira.contato}</p>
+                <p><strong>Endereço:</strong> ${peneira.endereco}</p>
+                <p><strong>Vagas Disponíveis:</strong> ${peneira.vagasDisponiveis} de ${peneira.totalVagas}</p>
+                <p><strong>Prazo de Inscrição:</strong> ${formatarData(peneira.prazoInscricao)}</p>
+                <p><strong>Status:</strong> <span style="color: ${getStatusCor(peneira.status)};">${getStatusTexto(peneira.status)}</span></p>
+                <p><strong>Taxa de Inscrição:</strong> ${peneira.taxa}</p>
+            `;
+        } else {
+            infoPeneiraDiv.innerHTML = `
+                <h2>Peneira Não Encontrada</h2>
+                <p>O ID da peneira especificado na URL não corresponde a nenhuma peneira em nossos registros.</p>
+                <p>Por favor, verifique o link ou entre em contato para mais informações.</p>
+            `;
+        }
+    } else {
+        infoPeneiraDiv.innerHTML = `
+            <h2>Informações da Peneira</h2>
+            <p>Nenhuma peneira específica foi selecionada. Por favor, use o link fornecido pela página de listagem de peneiras para preencher este formulário.</p>
+            <p>Exemplo de uso: <code>seu-formulario.html?peneira=1</code></p>
+        `;
+    }
+});
+
