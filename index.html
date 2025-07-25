@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -350,9 +351,9 @@
                     </div>
                     <p class="footer-description">
                         Conectando jovens talentos às melhores oportunidades no futebol brasileiro. 
-                        Sua jornada rumo ao profissionalismo começa aqui.
+                        Sua jornada rumo ao sucesso começa aqui.
                     </p>
-                    <div class="social-links">
+                    <div class="footer-social">
                         <a href="#" class="social-link" aria-label="Facebook">
                             <i class="fab fa-facebook-f"></i>
                         </a>
@@ -379,32 +380,38 @@
                 </div>
                 
                 <div class="footer-section">
-                    <h3 class="footer-title">Para Clubes</h3>
-                    <ul class="footer-links">
-                        <li><a href="#">Cadastrar Peneira</a></li>
-                        <li><a href="#">Gerenciar Inscrições</a></li>
-                        <li><a href="#">Planos e Preços</a></li>
-                        <li><a href="#">Suporte Técnico</a></li>
-                    </ul>
-                </div>
-                
-                <div class="footer-section">
                     <h3 class="footer-title">Suporte</h3>
                     <ul class="footer-links">
                         <li><a href="#">Central de Ajuda</a></li>
                         <li><a href="#">Termos de Uso</a></li>
                         <li><a href="#">Política de Privacidade</a></li>
-                        <li><a href="#">Fale Conosco</a></li>
+                        <li><a href="#">FAQ</a></li>
                     </ul>
+                </div>
+                
+                <div class="footer-section">
+                    <h3 class="footer-title">Contato</h3>
+                    <div class="footer-contact">
+                        <div class="contact-item">
+                            <i class="fas fa-envelope"></i>
+                            <span>contato@peneirasbr.com</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-phone"></i>
+                            <span>(11) 9999-9999</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>São Paulo, SP - Brasil</span>
+                        </div>
+                    </div>
                 </div>
             </div>
             
             <div class="footer-bottom">
                 <div class="footer-bottom-content">
                     <p>&copy; 2024 PeneirasBR. Todos os direitos reservados.</p>
-                    <p class="footer-credits">
-                        Desenvolvido com <i class="fas fa-heart"></i> para o futebol brasileiro
-                    </p>
+                    <p class="footer-credits">Desenvolvido com <i class="fas fa-heart"></i> para o futebol brasileiro</p>
                 </div>
             </div>
         </div>
@@ -419,124 +426,66 @@
                 <div class="spinner-ring"></div>
                 <div class="spinner-ring"></div>
             </div>
-            <h3 class="loading-title">Buscando Peneiras</h3>
-            <p id="loading-address" class="loading-text">Localizando sua região...</p>
-            <p id="loading-neighborhood" class="loading-subtext">Aguarde um momento</p>
+            <div class="loading-text">
+                <h3>Buscando peneiras...</h3>
+                <p id="loading-address">Aguarde enquanto localizamos as melhores oportunidades para você</p>
+                <p id="loading-neighborhood" class="loading-detail"></p>
+            </div>
         </div>
     </div>
 
-    <!-- Notification Container -->
-    <div id="notification-container" class="notification-container"></div>
-
-    <!-- Peneira Modal -->
+    <!-- Modal de Informações da Peneira -->
     <div id="peneira-modal" class="modal-overlay" style="display: none;">
         <div class="modal-container">
             <div class="modal-header">
-                <h2 id="modal-title" class="modal-title"></h2>
+                <h2 id="modal-title" class="modal-title">Informações da Peneira</h2>
                 <button class="modal-close" onclick="closePeneiraModal()">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div class="modal-content">
                 <div class="modal-info-grid">
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Clube</span>
-                            <span id="modal-clube" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-shield-alt"></i> Clube</h3>
+                        <p id="modal-clube"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-calendar-alt"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Data</span>
-                            <span id="modal-data" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-calendar-alt"></i> Data e Horário</h3>
+                        <p id="modal-data-horario"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-clock"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Horário</span>
-                            <span id="modal-horario" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-map-marker-alt"></i> Local</h3>
+                        <p id="modal-endereco"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-map-marker-alt"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Local</span>
-                            <span id="modal-endereco" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-users"></i> Categoria</h3>
+                        <p id="modal-categoria"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Categoria</span>
-                            <span id="modal-categoria" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-clipboard-list"></i> Requisitos</h3>
+                        <p id="modal-requisitos"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-clipboard-list"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Requisitos</span>
-                            <span id="modal-requisitos" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-phone"></i> Contato</h3>
+                        <p id="modal-contato"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-phone"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Contato</span>
-                            <span id="modal-contato" class="info-value"></span>
-                        </div>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-clock"></i> Prazo de Inscrição</h3>
+                        <p id="modal-prazo"></p>
                     </div>
-                    
-                    <div class="info-item">
-                        <div class="info-icon">
-                            <i class="fas fa-route"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Distância</span>
-                            <span id="modal-distancia" class="info-value"></span>
-                        </div>
-                    </div>
-                    
-                    <div class="info-item full-width">
-                        <div class="info-icon">
-                            <i class="fas fa-info-circle"></i>
-                        </div>
-                        <div class="info-content">
-                            <span class="info-label">Vagas Disponíveis</span>
-                            <div id="modal-vagas" class="vagas-info">
-                                <div class="vagas-bar">
-                                    <div class="vagas-progress"></div>
-                                </div>
-                                <span class="vagas-text"></span>
+                    <div class="modal-info-section">
+                        <h3><i class="fas fa-chart-bar"></i> Disponibilidade</h3>
+                        <div id="modal-vagas-info">
+                            <p id="modal-vagas"></p>
+                            <div class="modal-availability-bar">
+                                <div id="modal-availability-progress" class="modal-availability-progress"></div>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="modal-actions">
-                    <button class="btn-primary modal-btn" onclick="window.open('https://www.example.com', '_blank');">
-                        <i class="fas fa-external-link-alt"></i>
+                    <button class="btn-primary modal-btn" onclick="window.location.href='https://example.com/inscricao'">
+                        <i class="fas fa-user-plus"></i>
                         Me inscrever
                     </button>
                 </div>
@@ -548,6 +497,9 @@
     <button id="back-to-top" class="back-to-top" style="display: none;">
         <i class="fas fa-chevron-up"></i>
     </button>
+
+    <!-- Notification Container -->
+    <div id="notification-container" class="notification-container"></div>
 
     <!-- Scripts -->
     <script src="script.js"></script>
