@@ -797,22 +797,27 @@ function openPeneiraModal(peneiraId) {
     // Preencher informações do modal
     document.getElementById('modal-title').textContent = peneira.titulo;
     document.getElementById('modal-clube').textContent = peneira.clube;
-    document.getElementById('modal-data-horario').textContent = `${formatDate(peneira.data)} às ${peneira.horario}`;
+    document.getElementById('modal-data').textContent = formatDate(peneira.data);
+    document.getElementById('modal-horario').textContent = peneira.horario;
     document.getElementById('modal-endereco').textContent = peneira.endereco || 'Endereço será definido após busca';
     document.getElementById('modal-categoria').textContent = peneira.categoria;
     document.getElementById('modal-requisitos').textContent = peneira.requisitos;
     document.getElementById('modal-contato').textContent = peneira.contato;
-    document.getElementById('modal-prazo').textContent = formatDate(peneira.prazoInscricao);
     
-    // Informações de vagas (apenas para peneiras abertas)
-    if (peneira.status === 'aberta') {
-        const percentualOcupado = ((peneira.totalVagas - peneira.vagasDisponiveis) / peneira.totalVagas) * 100;
-        document.getElementById('modal-vagas').textContent = `${peneira.vagasDisponiveis} vagas disponíveis de ${peneira.totalVagas} total`;
-        document.getElementById('modal-availability-progress').style.width = `${percentualOcupado}%`;
-        document.getElementById('modal-vagas-info').style.display = 'block';
-    } else {
-        document.getElementById('modal-vagas-info').style.display = 'none';
-    }
+    // Calcular e mostrar distância
+    const distanciaTexto = peneira.distancia < 1 ? 
+        `${Math.round(peneira.distancia * 1000)}m` : 
+        `${peneira.distancia}km`;
+    document.getElementById('modal-distancia').textContent = distanciaTexto;
+    
+    // Informações de vagas
+    const percentualOcupado = ((peneira.totalVagas - peneira.vagasDisponiveis) / peneira.totalVagas) * 100;
+    const vagasElement = document.getElementById('modal-vagas');
+    const vagasProgress = vagasElement.querySelector('.vagas-progress');
+    const vagasText = vagasElement.querySelector('.vagas-text');
+    
+    vagasProgress.style.width = `${percentualOcupado}%`;
+    vagasText.textContent = `${peneira.vagasDisponiveis} de ${peneira.totalVagas} vagas disponíveis`;
     
     // Mostrar modal
     const modal = document.getElementById('peneira-modal');
