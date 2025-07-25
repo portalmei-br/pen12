@@ -1,6 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
-    // Dados das peneiras (deve ser o mesmo que peneiras-data.js)
-    const peneirasData = [
+// Dados simulados de peneiras de futebol - VERSÃO SIMPLIFICADA
+const peneirasData = [
     {
         id: 1,
         titulo: "Peneira Sub-15 e Sub-17",
@@ -116,7 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         inscricaoEncerrada: false
     }
 ];
-    
+
 // Cache para armazenar endereços já consultados
 const enderecoCache = new Map();
 
@@ -900,79 +899,3 @@ function setupScrollAnimations() {
     const animatedElements = document.querySelectorAll('.step-card, .feature-card, .testimonial-card');
     animatedElements.forEach(el => observer.observe(el));
 }
-
-                          // Função para obter parâmetro da URL
-    function getURLParameter(name) {
-        const urlParams = new URLSearchParams(window.location.search);
-        return urlParams.get(name);
-    }
-
-    // Função para formatar data
-    function formatarData(dataString) {
-        const data = new Date(dataString);
-        return data.toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric"
-        });
-    }
-
-    // Função para obter status em português
-    function getStatusTexto(status) {
-        const statusMap = {
-            "aberta": "Inscrições Abertas",
-            "encerrada": "Inscrições Encerradas",
-            "em_breve": "Em Breve"
-        };
-        return statusMap[status] || "Status não definido";
-    }
-
-    // Função para obter cor do status
-    function getStatusCor(status) {
-        const corMap = {
-            "aberta": "var(--success-color)",
-            "encerrada": "var(--error-color)",
-            "em_breve": "var(--gray-500)"
-        };
-        return corMap[status] || "var(--gray-500)";
-    }
-
-    // Preencher informações da peneira no formulário
-    const peneiraId = getURLParameter("peneira");
-    const infoPeneiraDiv = document.getElementById("info-peneira");
-
-    if (peneiraId) {
-        const peneira = peneirasData.find(p => p.id === parseInt(peneiraId));
-
-        if (peneira) {
-            infoPeneiraDiv.innerHTML = `
-                <h2>Informações da Peneira</h2>
-                <p><strong>Título:</strong> ${peneira.titulo}</p>
-                <p><strong>Clube:</strong> ${peneira.clube}</p>
-                <p><strong>Data:</strong> ${formatarData(peneira.data)}</p>
-                <p><strong>Horário:</strong> ${peneira.horario}</p>
-                <p><strong>Categoria:</strong> ${peneira.categoria}</p>
-                <p><strong>Requisitos:</strong> ${peneira.requisitos}</p>
-                <p><strong>Contato:</strong> ${peneira.contato}</p>
-                <p><strong>Endereço:</strong> ${peneira.endereco}</p>
-                <p><strong>Vagas Disponíveis:</strong> ${peneira.vagasDisponiveis} de ${peneira.totalVagas}</p>
-                <p><strong>Prazo de Inscrição:</strong> ${formatarData(peneira.prazoInscricao)}</p>
-                <p><strong>Status:</strong> <span style="color: ${getStatusCor(peneira.status)};">${getStatusTexto(peneira.status)}</span></p>
-                <p><strong>Taxa de Inscrição:</strong> ${peneira.taxa}</p>
-            `;
-        } else {
-            infoPeneiraDiv.innerHTML = `
-                <h2>Peneira Não Encontrada</h2>
-                <p>O ID da peneira especificado na URL não corresponde a nenhuma peneira em nossos registros.</p>
-                <p>Por favor, verifique o link ou entre em contato para mais informações.</p>
-            `;
-        }
-    } else {
-        infoPeneiraDiv.innerHTML = `
-            <h2>Informações da Peneira</h2>
-            <p>Nenhuma peneira específica foi selecionada. Por favor, use o link fornecido pela página de listagem de peneiras para preencher este formulário.</p>
-            <p>Exemplo de uso: <code>seu-formulario.html?peneira=1</code></p>
-        `;
-    }
-});
-
