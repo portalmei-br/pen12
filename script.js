@@ -1,985 +1,960 @@
-/**
- * PeneirasBR - Sistema de Busca de Peneiras de Futebol
- * Versão Otimizada com Melhores Práticas
- * @version 2.0.0
- */
-
-// ==================== CONFIGURAÇÕES E CONSTANTES ====================
-
-const CONFIG = {
-    API: {
-        VIACEP_BASE_URL: 'https://viacep.com.br/ws',
-        REQUEST_TIMEOUT: 10000,
-        CACHE_EXPIRATION: 30 * 60 * 1000, // 30 minutos
-        RETRY_ATTEMPTS: 3,
-        RETRY_DELAY: 1000
-    },
-    UI: {
-        LOADING_MIN_TIME: 1000,
-        ANIMATION_DURATION: 300,
-        DEBOUNCE_DELAY: 500,
-        SCROLL_THRESHOLD: 100,
-        BACK_TO_TOP_THRESHOLD: 500
-    },
-    GEO: {
-        HIGH_ACCURACY: true,
-        TIMEOUT: 10000,
-        MAX_AGE: 5 * 60 * 1000, // 5 minutos
-        EARTH_RADIUS_KM: 6371
-    },
-    VALIDATION: {
-        CEP_LENGTH: 8,
-        CEP_REGEX: /^\d{8}$/
-    }
-};
-
-// ==================== DADOS DAS PENEIRAS ====================
-
-const PENEIRAS_DATA = [
-    {
-        id: 1,
-        titulo: "Peneira Sub-15 e Sub-17",
-        clube: "Santos FC",
-        endereco: "Vila Belmiro, Santos - SP",
-        data: "2024-08-15",
-        horario: "14:00",
-        categoria: "Sub-15, Sub-17",
-        requisitos: "Idade entre 13-17 anos",
-        contato: "(13) 3257-4000",
-        coordenadas: { lat: -23.9618, lng: -46.3322 },
-        status: "aberta",
-        vagasDisponiveis: 8,
-        totalVagas: 50,
-        prazoInscricao: "2024-08-10",
-        taxa: "R$ 50,00",
-        linkInscricao: "formulario-modificado.html?peneira=1"
-    },
-    {
-        id: 2,
-        titulo: "Peneira Categoria de Base",
-        clube: "São Paulo FC",
-        endereco: "CT Barra Funda, São Paulo - SP",
-        data: "2024-08-20",
-        horario: "09:00",
-        categoria: "Sub-13, Sub-15",
-        requisitos: "Idade entre 11-15 anos",
-        contato: "(11) 3670-8100",
-        coordenadas: { lat: -23.5505, lng: -46.6333 },
-        status: "encerrada",
-        vagasDisponiveis: 0,
-        totalVagas: 40,
-        prazoInscricao: "2024-08-15",
-        taxa: "R$ 45,00",
-        linkInscricao: "formulario-modificado.html?peneira=2"
-    },
-    {
-        id: 3,
-        titulo: "Peneira Feminina",
-        clube: "Corinthians",
-        endereco: "CT Joaquim Grava, São Paulo - SP",
-        data: "2024-08-25",
-        horario: "15:30",
-        categoria: "Sub-16, Sub-18",
-        requisitos: "Idade entre 14-18 anos (feminino)",
-        contato: "(11) 2095-3000",
-        coordenadas: { lat: -23.5629, lng: -46.6544 },
-        status: "aberta",
-        vagasDisponiveis: 3,
-        totalVagas: 30,
-        prazoInscricao: "2024-08-20",
-        taxa: "R$ 40,00",
-        linkInscricao: "formulario-modificado.html?peneira=3"
-    },
-    {
-        id: 4,
-        titulo: "Peneira Juvenil",
-        clube: "Palmeiras",
-        endereco: "Academia de Futebol, São Paulo - SP",
-        data: "2024-09-01",
-        horario: "10:00",
-        categoria: "Sub-17, Sub-20",
-        requisitos: "Idade entre 15-20 anos",
-        contato: "(11) 3873-2400",
-        coordenadas: { lat: -23.5629, lng: -46.6544 },
-        status: "aberta",
-        vagasDisponiveis: 15,
-        totalVagas: 60,
-        prazoInscricao: "2024-08-28",
-        taxa: "R$ 60,00",
-        linkInscricao: "formulario-modificado.html?peneira=4"
-    },
-    {
-        id: 5,
-        titulo: "Peneira Regional",
-        clube: "Red Bull Bragantino",
-        endereco: "CT Red Bull, Bragança Paulista - SP",
-        data: "2024-09-05",
-        horario: "13:00",
-        categoria: "Sub-14, Sub-16",
-        requisitos: "Idade entre 12-16 anos",
-        contato: "(11) 4034-1900",
-        coordenadas: { lat: -22.9519, lng: -46.5428 },
-        status: "encerrada",
-        vagasDisponiveis: 0,
-        totalVagas: 25,
-        prazoInscricao: "2024-09-01",
-        taxa: "R$ 35,00",
-        linkInscricao: "formulario-modificado.html?peneira=5"
-    },
-    {
-        id: 6,
-        titulo: "Peneira Escolar",
-        clube: "Ponte Preta",
-        endereco: "Estádio Moisés Lucarelli, Campinas - SP",
-        data: "2024-09-10",
-        horario: "14:30",
-        categoria: "Sub-13, Sub-15",
-        requisitos: "Idade entre 11-15 anos",
-        contato: "(19) 3231-3444",
-        coordenadas: { lat: -22.9056, lng: -47.0608 },
-        status: "aberta",
-        vagasDisponiveis: 22,
-        totalVagas: 35,
-        prazoInscricao: "2024-09-07",
-        taxa: "R$ 30,00",
-        linkInscricao: "formulario-modificado.html?peneira=6"
-    }
-];
-
-// ==================== CLASSES E MÓDULOS ====================
-
-/**
- * Classe para gerenciar cache com expiração
- */
-class CacheManager {
-    constructor(expirationTime = CONFIG.API.CACHE_EXPIRATION) {
-        this.cache = new Map();
-        this.expirationTime = expirationTime;
-    }
-
-    set(key, value) {
-        const expirationDate = Date.now() + this.expirationTime;
-        this.cache.set(key, { value, expirationDate });
-    }
-
-    get(key) {
-        const item = this.cache.get(key);
-        if (!item) return null;
-
-        if (Date.now() > item.expirationDate) {
-            this.cache.delete(key);
-            return null;
+document.addEventListener('DOMContentLoaded', function() {
+    // Dados das peneiras (deve ser o mesmo que peneiras-data.js)
+    const peneirasData = [
+        {
+            id: 1,
+            titulo: "Peneira Sub-15 e Sub-17",
+            clube: "Santos FC",
+            data: "2024-08-15",
+            horario: "14:00",
+            categoria: "Sub-15, Sub-17",
+            requisitos: "Idade entre 13-17 anos",
+            contato: "(13) 3257-4000",
+            endereco: "Vila Belmiro, Santos - SP",
+            vagasDisponiveis: 8,
+            totalVagas: 50,
+            prazoInscricao: "2024-08-10",
+            status: "aberta",
+            taxa: "R$ 50,00"
+        },
+        {
+            id: 2,
+            titulo: "Peneira Categoria de Base",
+            clube: "São Paulo FC",
+            data: "2024-08-20",
+            horario: "09:00",
+            categoria: "Sub-13, Sub-15",
+            requisitos: "Idade entre 11-15 anos",
+            contato: "(11) 3670-8100",
+            endereco: "CT Barra Funda, São Paulo - SP",
+            vagasDisponiveis: 0,
+            totalVagas: 40,
+            prazoInscricao: "2024-08-15",
+            status: "encerrada",
+            taxa: "R$ 45,00"
+        },
+        {
+            id: 3,
+            titulo: "Peneira Feminina",
+            clube: "Corinthians",
+            data: "2024-08-25",
+            horario: "15:30",
+            categoria: "Sub-16, Sub-18",
+            requisitos: "Idade entre 14-18 anos (feminino)",
+            contato: "(11) 2095-3000",
+            endereco: "CT Joaquim Grava, São Paulo - SP",
+            vagasDisponiveis: 3,
+            totalVagas: 30,
+            prazoInscricao: "2024-08-20",
+            status: "aberta",
+            taxa: "R$ 40,00"
+        },
+        {
+            id: 4,
+            titulo: "Peneira Juvenil",
+            clube: "Palmeiras",
+            data: "2024-09-01",
+            horario: "10:00",
+            categoria: "Sub-17, Sub-20",
+            requisitos: "Idade entre 15-20 anos",
+            contato: "(11) 3873-2400",
+            endereco: "Academia de Futebol, São Paulo - SP",
+            vagasDisponiveis: 15,
+            totalVagas: 60,
+            prazoInscricao: "2024-08-28",
+            status: "aberta",
+            taxa: "R$ 60,00"
+        },
+        {
+            id: 5,
+            titulo: "Peneira Regional",
+            clube: "Red Bull Bragantino",
+            data: "2024-09-05",
+            horario: "13:00",
+            categoria: "Sub-14, Sub-16",
+            requisitos: "Idade entre 12-16 anos",
+            contato: "(11) 4034-1900",
+            endereco: "CT Red Bull, Bragança Paulista - SP",
+            vagasDisponiveis: 0,
+            totalVagas: 25,
+            prazoInscricao: "2024-09-01",
+            status: "encerrada",
+            taxa: "R$ 35,00"
+        },
+        {
+            id: 6,
+            titulo: "Peneira Escolar",
+            clube: "Ponte Preta",
+            data: "2024-09-10",
+            horario: "14:30",
+            categoria: "Sub-13, Sub-15",
+            requisitos: "Idade entre 11-15 anos",
+            contato: "(19) 3231-3444",
+            endereco: "Estádio Moisés Lucarelli, Campinas - SP",
+            vagasDisponiveis: 22,
+            totalVagas: 35,
+            prazoInscricao: "2024-09-07",
+            status: "aberta",
+            taxa: "R$ 30,00"
         }
+    ];
 
-        return item.value;
+    // Função para obter parâmetro da URL
+    function getURLParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
     }
 
-    clear() {
-        this.cache.clear();
-    }
-
-    size() {
-        return this.cache.size;
-    }
-}
-
-/**
- * Classe para gerenciar requisições HTTP com retry
- */
-class HttpClient {
-    static async fetchWithRetry(url, options = {}, retries = CONFIG.API.RETRY_ATTEMPTS) {
-        for (let i = 0; i < retries; i++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), CONFIG.API.REQUEST_TIMEOUT);
-
-                const response = await fetch(url, {
-                    ...options,
-                    signal: controller.signal
-                });
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-
-                return response;
-            } catch (error) {
-                if (i === retries - 1) throw error;
-                await this.delay(CONFIG.API.RETRY_DELAY * (i + 1));
-            }
-        }
-    }
-
-    static delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-}
-
-/**
- * Classe para utilitários de validação
- */
-class Validator {
-    static isValidCEP(cep) {
-        const cleanCEP = this.cleanCEP(cep);
-        return CONFIG.VALIDATION.CEP_REGEX.test(cleanCEP);
-    }
-
-    static cleanCEP(cep) {
-        return cep.replace(/\D/g, '');
-    }
-
-    static isValidCoordinates(lat, lng) {
-        return (
-            typeof lat === 'number' && 
-            typeof lng === 'number' &&
-            lat >= -90 && lat <= 90 &&
-            lng >= -180 && lng <= 180
-        );
-    }
-}
-
-/**
- * Classe para cálculos geográficos
- */
-class GeoUtils {
-    static calculateDistance(lat1, lng1, lat2, lng2) {
-        if (!Validator.isValidCoordinates(lat1, lng1) || !Validator.isValidCoordinates(lat2, lng2)) {
-            throw new Error('Coordenadas inválidas');
-        }
-
-        const R = CONFIG.GEO.EARTH_RADIUS_KM;
-        const dLat = this.toRadians(lat2 - lat1);
-        const dLng = this.toRadians(lng2 - lng1);
-        
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                  Math.cos(this.toRadians(lat1)) * Math.cos(this.toRadians(lat2)) *
-                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
-    static toRadians(degrees) {
-        return degrees * (Math.PI / 180);
-    }
-
-    static formatDistance(distance) {
-        if (distance < 1) {
-            return `${Math.round(distance * 1000)}m`;
-        }
-        return `${distance.toFixed(1)}km`;
-    }
-}
-
-/**
- * Classe para gerenciar notificações
- */
-class NotificationManager {
-    static show(message, type = 'info', duration = 5000) {
-        const container = document.getElementById('notification-container');
-        if (!container) return;
-
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="fas fa-${this.getIcon(type)}"></i>
-                <span>${message}</span>
-            </div>
-            <button class="notification-close" onclick="this.parentElement.remove()">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
-
-        container.appendChild(notification);
-
-        // Auto remove
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, duration);
-
-        // Animate in
-        requestAnimationFrame(() => {
-            notification.classList.add('show');
+    // Função para formatar data
+    function formatarData(dataString) {
+        const data = new Date(dataString);
+        return data.toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
         });
     }
 
-    static getIcon(type) {
-        const icons = {
-            success: 'check-circle',
-            error: 'exclamation-circle',
-            warning: 'exclamation-triangle',
-            info: 'info-circle'
+    // Função para obter status em português
+    function getStatusTexto(status) {
+        const statusMap = {
+            "aberta": "Inscrições Abertas",
+            "encerrada": "Inscrições Encerradas",
+            "em_breve": "Em Breve"
         };
-        return icons[type] || icons.info;
+        return statusMap[status] || "Status não definido";
     }
-}
 
-/**
- * Classe para utilitários de debounce e throttle
- */
-class PerformanceUtils {
-    static debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
+    // Função para obter cor do status
+    function getStatusCor(status) {
+        const corMap = {
+            "aberta": "var(--success-color)",
+            "encerrada": "var(--error-color)",
+            "em_breve": "var(--gray-500)"
         };
+        return corMap[status] || "var(--gray-500)";
     }
 
-    static throttle(func, limit) {
-        let inThrottle;
-        return function executedFunction(...args) {
-            if (!inThrottle) {
-                func.apply(this, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
-    }
-}
+    // Preencher informações da peneira no formulário
+    const peneiraId = getURLParameter("peneira");
+    const infoPeneiraDiv = document.getElementById("info-peneira");
 
-// ==================== SERVIÇOS ====================
+    if (peneiraId) {
+        const peneira = peneirasData.find(p => p.id === parseInt(peneiraId));
 
-/**
- * Serviço para busca de CEP
- */
-class CEPService {
-    constructor() {
-        this.cache = new CacheManager();
-    }
-
-    async buscarEndereco(cep) {
-        const cleanCEP = Validator.cleanCEP(cep);
-        
-        if (!Validator.isValidCEP(cleanCEP)) {
-            throw new Error('CEP inválido');
+        if (peneira) {
+            infoPeneiraDiv.innerHTML = `
+                <h2>Informações da Peneira</h2>
+                <p><strong>Título:</strong> ${peneira.titulo}</p>
+                <p><strong>Clube:</strong> ${peneira.clube}</p>
+                <p><strong>Data:</strong> ${formatarData(peneira.data)}</p>
+                <p><strong>Horário:</strong> ${peneira.horario}</p>
+                <p><strong>Categoria:</strong> ${peneira.categoria}</p>
+                <p><strong>Requisitos:</strong> ${peneira.requisitos}</p>
+                <p><strong>Contato:</strong> ${peneira.contato}</p>
+                <p><strong>Endereço:</strong> ${peneira.endereco}</p>
+                <p><strong>Vagas Disponíveis:</strong> ${peneira.vagasDisponiveis} de ${peneira.totalVagas}</p>
+                <p><strong>Prazo de Inscrição:</strong> ${formatarData(peneira.prazoInscricao)}</p>
+                <p><strong>Status:</strong> <span style="color: ${getStatusCor(peneira.status)};">${getStatusTexto(peneira.status)}</span></p>
+                <p><strong>Taxa de Inscrição:</strong> ${peneira.taxa}</p>
+            `;
+        } else {
+            infoPeneiraDiv.innerHTML = `
+                <h2>Peneira Não Encontrada</h2>
+                <p>O ID da peneira especificado na URL não corresponde a nenhuma peneira em nossos registros.</p>
+                <p>Por favor, verifique o link ou entre em contato para mais informações.</p>
+            `;
         }
-
-        // Verificar cache
-        const cached = this.cache.get(cleanCEP);
-        if (cached) {
-            return cached;
-        }
-
-        try {
-            const response = await HttpClient.fetchWithRetry(
-                `${CONFIG.API.VIACEP_BASE_URL}/${cleanCEP}/json/`
-            );
-            
-            const data = await response.json();
-            
-            if (data.erro) {
-                throw new Error('CEP não encontrado');
-            }
-
-            if (!data.localidade || !data.uf) {
-                throw new Error('Dados incompletos');
-            }
-
-            const endereco = {
-                cep: cleanCEP,
-                cidade: data.localidade,
-                estado: data.uf,
-                bairro: data.bairro || '',
-                logradouro: data.logradouro || '',
-                formatted: `${data.localidade}, ${data.uf}`
-            };
-
-            // Armazenar no cache
-            this.cache.set(cleanCEP, endereco);
-            
-            return endereco;
-        } catch (error) {
-            throw new Error(`Erro ao buscar CEP: ${error.message}`);
-        }
-    }
-}
-
-/**
- * Serviço de geolocalização
- */
-class GeolocationService {
-    static getCurrentPosition() {
-        return new Promise((resolve, reject) => {
-            if (!navigator.geolocation) {
-                reject(new Error('Geolocalização não suportada'));
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(
-                position => resolve({
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude,
-                    accuracy: position.coords.accuracy
-                }),
-                error => {
-                    const messages = {
-                        [error.PERMISSION_DENIED]: 'Permissão de localização negada',
-                        [error.POSITION_UNAVAILABLE]: 'Localização indisponível',
-                        [error.TIMEOUT]: 'Tempo limite excedido'
-                    };
-                    reject(new Error(messages[error.code] || 'Erro desconhecido'));
-                },
-                {
-                    enableHighAccuracy: CONFIG.GEO.HIGH_ACCURACY,
-                    timeout: CONFIG.GEO.TIMEOUT,
-                    maximumAge: CONFIG.GEO.MAX_AGE
-                }
-            );
-        });
-    }
-
-    static async reverseGeocode(lat, lng) {
-        // Simulação de geocodificação reversa
-        // Em produção, usar serviço real como Google Maps ou OpenStreetMap
-        const cities = [
-            { name: "São Paulo, SP", lat: -23.5505, lng: -46.6333 },
-            { name: "Rio de Janeiro, RJ", lat: -22.9068, lng: -43.1729 },
-            { name: "Belo Horizonte, MG", lat: -19.9167, lng: -43.9345 },
-            { name: "Porto Alegre, RS", lat: -30.0346, lng: -51.2177 },
-            { name: "Salvador, BA", lat: -12.9714, lng: -38.5014 },
-            { name: "Brasília, DF", lat: -15.8267, lng: -47.9218 }
-        ];
-
-        let closestCity = cities[0];
-        let minDistance = GeoUtils.calculateDistance(lat, lng, cities[0].lat, cities[0].lng);
-
-        cities.forEach(city => {
-            const distance = GeoUtils.calculateDistance(lat, lng, city.lat, city.lng);
-            if (distance < minDistance) {
-                minDistance = distance;
-                closestCity = city;
-            }
-        });
-
-        return closestCity.name;
-    }
-}
-
-/**
- * Serviço de busca de peneiras
- */
-class PeneiraService {
-    static buscarPeneiras(userCoords, filters = {}) {
-        let results = [...PENEIRAS_DATA];
-
-        // Calcular distâncias se coordenadas fornecidas
-        if (userCoords && Validator.isValidCoordinates(userCoords.lat, userCoords.lng)) {
-            results = results.map(peneira => ({
-                ...peneira,
-                distancia: GeoUtils.calculateDistance(
-                    userCoords.lat,
-                    userCoords.lng,
-                    peneira.coordenadas.lat,
-                    peneira.coordenadas.lng
-                )
-            }));
-        }
-
-        // Aplicar filtros
-        if (filters.status) {
-            results = results.filter(peneira => peneira.status === filters.status);
-        }
-
-        if (filters.categoria) {
-            results = results.filter(peneira => 
-                peneira.categoria.toLowerCase().includes(filters.categoria.toLowerCase())
-            );
-        }
-
-        if (filters.maxDistance && userCoords) {
-            results = results.filter(peneira => peneira.distancia <= filters.maxDistance);
-        }
-
-        // Ordenar por distância se disponível
-        if (userCoords) {
-            results.sort((a, b) => a.distancia - b.distancia);
-        }
-
-        return results;
-    }
-
-    static getPeneiraById(id) {
-        return PENEIRAS_DATA.find(peneira => peneira.id === parseInt(id));
-    }
-}
-
-// ==================== GERENCIADOR PRINCIPAL ====================
-
-/**
- * Classe principal da aplicação
- */
-class PeneirasBRApp {
-    constructor() {
-        this.cepService = new CEPService();
-        this.state = {
-            userLocation: null,
-            currentResults: [],
-            currentFilter: 'all',
-            isLoading: false
-        };
-        this.elements = {};
-        
-        this.init();
-    }
-
-    init() {
-        this.bindElements();
-        this.bindEvents();
-        this.setupAnimations();
-    }
-
-    bindElements() {
-        const elementIds = [
-            'cep-input', 'get-location-btn', 'search-btn', 'results',
-            'results-container', 'no-results', 'loading-overlay',
-            'loading-address', 'loading-neighborhood', 'back-to-top',
-            'nav-toggle', 'header'
-        ];
-
-        elementIds.forEach(id => {
-            this.elements[id] = document.getElementById(id);
-        });
-
-        this.elements.navMenu = document.querySelector('.nav-menu');
-        this.elements.suggestionBtns = document.querySelectorAll('.suggestion-btn');
-        this.elements.filterBtns = document.querySelectorAll('.filter-btn');
-    }
-
-    bindEvents() {
-        // Busca
-        this.elements.searchBtn?.addEventListener('click', () => this.handleSearch());
-        this.elements.cepInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleSearch();
-        });
-
-        // Localização
-        this.elements.getLocationBtn?.addEventListener('click', () => this.getCurrentLocation());
-
-        // Sugestões
-        this.elements.suggestionBtns?.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const location = btn.getAttribute('data-location');
-                this.elements.cepInput.value = location;
-                this.handleSearch();
-            });
-        });
-
-        // Filtros
-        this.elements.filterBtns?.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const filter = btn.getAttribute('data-filter');
-                this.setActiveFilter(filter);
-                this.applyFilter(filter);
-            });
-        });
-
-        // Menu mobile
-        this.elements.navToggle?.addEventListener('click', () => this.toggleMobileMenu());
-
-        // Scroll
-        window.addEventListener('scroll', PerformanceUtils.throttle(() => this.handleScroll(), 100));
-
-        // Back to top
-        this.elements.backToTop?.addEventListener('click', () => this.scrollToTop());
-    }
-
-    setupAnimations() {
-        this.animateStats();
-        this.setupScrollAnimations();
-        this.setupScrollIndicator();
-    }
-
-    // ==================== MÉTODOS DE BUSCA ====================
-
-    async handleSearch() {
-        const cep = this.elements.cepInput?.value?.trim();
-        
-        if (!cep) {
-            NotificationManager.show('Por favor, digite um CEP', 'warning');
-            this.elements.cepInput?.focus();
-            return;
-        }
-
-        if (!Validator.isValidCEP(cep)) {
-            NotificationManager.show('Por favor, digite um CEP válido com 8 dígitos', 'warning');
-            this.elements.cepInput?.focus();
-            return;
-        }
-
-        this.showLoading();
-
-        try {
-            const endereco = await this.cepService.buscarEndereco(cep);
-            
-            this.updateLoadingText(`Buscando peneiras próximas a ${endereco.formatted}`);
-            
-            // Simular delay para melhor UX
-            await HttpClient.delay(CONFIG.UI.LOADING_MIN_TIME);
-            
-            this.searchPeneiras(endereco);
-            
-        } catch (error) {
-            NotificationManager.show(error.message, 'error');
-            this.hideLoading();
-        }
-    }
-
-    searchPeneiras(endereco) {
-        try {
-            // Simular coordenadas do usuário baseado no endereço
-            const userCoords = this.geocodeLocation(endereco.formatted);
-            
-            const results = PeneiraService.buscarPeneiras(userCoords);
-            
-            this.state.currentResults = results;
-            this.state.userLocation = userCoords;
-            
-            this.displayResults(results);
-            this.hideLoading();
-            
-        } catch (error) {
-            NotificationManager.show('Erro ao buscar peneiras', 'error');
-            this.hideLoading();
-        }
-    }
-
-    geocodeLocation(location) {
-        // Simulação simples - em produção usar API real
-        const coordinates = {
-            "São Paulo, SP": { lat: -23.5505, lng: -46.6333 },
-            "Rio de Janeiro, RJ": { lat: -22.9068, lng: -43.1729 },
-            "Belo Horizonte, MG": { lat: -19.9167, lng: -43.9345 },
-            "Porto Alegre, RS": { lat: -30.0346, lng: -51.2177 }
-        };
-        
-        return coordinates[location] || { lat: -23.5505, lng: -46.6333 };
-    }
-
-    // ==================== MÉTODOS DE GEOLOCALIZAÇÃO ====================
-
-    async getCurrentLocation() {
-        this.showLocationLoading();
-
-        try {
-            const position = await GeolocationService.getCurrentPosition();
-            const address = await GeolocationService.reverseGeocode(position.lat, position.lng);
-            
-            this.elements.cepInput.value = address;
-            this.hideLocationLoading();
-            this.handleSearch();
-            
-        } catch (error) {
-            NotificationManager.show(error.message, 'error');
-            this.hideLocationLoading();
-        }
-    }
-
-    // ==================== MÉTODOS DE UI ====================
-
-    displayResults(results) {
-        if (!this.elements.resultsContainer) return;
-
-        if (results.length === 0) {
-            this.showNoResults();
-            return;
-        }
-
-        this.elements.resultsContainer.innerHTML = results.map(peneira => 
-            this.createPeneiraCard(peneira)
-        ).join('');
-
-        this.showResults();
-        this.bindResultEvents();
-    }
-
-    createPeneiraCard(peneira) {
-        const statusClass = peneira.status === 'aberta' ? 'status-open' : 'status-closed';
-        const statusText = peneira.status === 'aberta' ? 'Inscrições Abertas' : 'Inscrições Encerradas';
-        const distanceText = peneira.distancia ? GeoUtils.formatDistance(peneira.distancia) : '';
-        const availabilityPercent = ((peneira.totalVagas - peneira.vagasDisponiveis) / peneira.totalVagas) * 100;
-
-        return `
-            <div class="peneira-card" data-peneira-id="${peneira.id}">
-                <div class="peneira-header">
-                    <div class="peneira-status ${statusClass}">
-                        <i class="fas fa-circle"></i>
-                        <span>${statusText}</span>
-                    </div>
-                    ${distanceText ? `<div class="peneira-distance">${distanceText}</div>` : ''}
-                </div>
-                
-                <div class="peneira-content">
-                    <h3 class="peneira-title">${peneira.titulo}</h3>
-                    <div class="peneira-club">
-                        <i class="fas fa-shield-alt"></i>
-                        <span>${peneira.clube}</span>
-                    </div>
-                    
-                    <div class="peneira-details">
-                        <div class="detail-item">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span>${this.formatDate(peneira.data)} às ${peneira.horario}</span>
-                        </div>
-                        <div class="detail-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>${peneira.endereco}</span>
-                        </div>
-                        <div class="detail-item">
-                            <i class="fas fa-users"></i>
-                            <span>${peneira.categoria}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="peneira-availability">
-                        <div class="availability-text">
-                            <span>${peneira.vagasDisponiveis} de ${peneira.totalVagas} vagas disponíveis</span>
-                        </div>
-                        <div class="availability-bar">
-                            <div class="availability-progress" style="width: ${availabilityPercent}%"></div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="peneira-actions">
-                    <button class="btn-secondary peneira-info-btn" onclick="app.openPeneiraModal(${peneira.id})">
-                        <i class="fas fa-info-circle"></i>
-                        Ver Detalhes
-                    </button>
-                    ${peneira.status === 'aberta' ? `
-                        <button class="btn-primary peneira-apply-btn" onclick="app.redirectToApplication(${peneira.id})">
-                            <i class="fas fa-user-plus"></i>
-                            Me Inscrever
-                        </button>
-                    ` : `
-                        <button class="btn-disabled" disabled>
-                            <i class="fas fa-times-circle"></i>
-                            Encerrada
-                        </button>
-                    `}
-                </div>
-            </div>
+    } else {
+        infoPeneiraDiv.innerHTML = `
+            <h2>Informações da Peneira</h2>
+            <p>Nenhuma peneira específica foi selecionada. Por favor, use o link fornecido pela página de listagem de peneiras para preencher este formulário.</p>
+            <p>Exemplo de uso: <code>seu-formulario.html?peneira=1</code></p>
         `;
     }
-
-    bindResultEvents() {
-        // Eventos já são tratados via onclick nos botões
-        // Aqui podemos adicionar eventos adicionais se necessário
-    }
-
-    openPeneiraModal(peneiraId) {
-        const peneira = PeneiraService.getPeneiraById(peneiraId);
-        if (!peneira) return;
-
-        // Implementar modal - código do modal seria adicionado aqui
-        console.log('Abrir modal para peneira:', peneira);
-    }
-
-    redirectToApplication(peneiraId) {
-        const peneira = PeneiraService.getPeneiraById(peneiraId);
-        if (!peneira) return;
-
-        if (peneira.status !== 'aberta') {
-            NotificationManager.show('Esta peneira não está mais disponível para inscrição', 'warning');
-            return;
-        }
-
-        window.location.href = peneira.linkInscricao;
-    }
-
-    // ==================== MÉTODOS DE FILTRO ====================
-
-    setActiveFilter(filter) {
-        this.elements.filterBtns?.forEach(btn => {
-            btn.classList.toggle('active', btn.getAttribute('data-filter') === filter);
-        });
-        this.state.currentFilter = filter;
-    }
-
-    applyFilter(filter) {
-        let filteredResults = [...this.state.currentResults];
-
-        switch (filter) {
-            case 'distance':
-                filteredResults.sort((a, b) => (a.distancia || 0) - (b.distancia || 0));
-                break;
-            case 'date':
-                filteredResults.sort((a, b) => new Date(a.data) - new Date(b.data));
-                break;
-            case 'all':
-            default:
-                // Manter ordem original
-                break;
-        }
-
-        this.displayResults(filteredResults);
-    }
-
-    // ==================== MÉTODOS DE LOADING ====================
-
-    showLoading() {
-        this.state.isLoading = true;
-        this.elements.loadingOverlay?.style.setProperty('display', 'flex');
-        this.elements.searchBtn?.classList.add('loading');
-    }
-
-    hideLoading() {
-        this.state.isLoading = false;
-        this.elements.loadingOverlay?.style.setProperty('display', 'none');
-        this.elements.searchBtn?.classList.remove('loading');
-    }
-
-    updateLoadingText(text) {
-        if (this.elements.loadingAddress) {
-            this.elements.loadingAddress.textContent = text;
-        }
-    }
-
-    showLocationLoading() {
-        if (this.elements.getLocationBtn) {
-            this.elements.getLocationBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-        }
-    }
-
-    hideLocationLoading() {
-        if (this.elements.getLocationBtn) {
-            this.elements.getLocationBtn.innerHTML = '<i class="fas fa-crosshairs"></i>';
-        }
-    }
-
-    showResults() {
-        this.elements.results?.style.setProperty('display', 'block');
-        this.elements.noResults?.style.setProperty('display', 'none');
-    }
-
-    showNoResults() {
-        this.elements.results?.style.setProperty('display', 'block');
-        this.elements.resultsContainer?.style.setProperty('display', 'none');
-        this.elements.noResults?.style.setProperty('display', 'block');
-    }
-
-    // ==================== MÉTODOS DE NAVEGAÇÃO ====================
-
-    toggleMobileMenu() {
-        this.elements.navMenu?.classList.toggle('active');
-        this.elements.navToggle?.classList.toggle('active');
-    }
-
-    handleScroll() {
-        const scrollY = window.scrollY;
-
-        // Header effect
-        if (scrollY > CONFIG.UI.SCROLL_THRESHOLD) {
-            this.elements.header?.classList.add('scrolled');
-        } else {
-            this.elements.header?.classList.remove('scrolled');
-        }
-
-        // Back to top button
-        if (scrollY > CONFIG.UI.BACK_TO_TOP_THRESHOLD) {
-            this.elements.backToTop?.style.setProperty('display', 'flex');
-        } else {
-            this.elements.backToTop?.style.setProperty('display', 'none');
-        }
-    }
-
-    scrollToTop() {
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
-        });
-    }
-
-    // ==================== MÉTODOS DE ANIMAÇÃO ====================
-
-    animateStats() {
-        const statNumbers = document.querySelectorAll('.stat-number');
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const target = parseInt(entry.target.getAttribute('data-target'));
-                    this.animateNumber(entry.target, target);
-                    observer.unobserve(entry.target);
-                }
-            });
-        }, { threshold: 0.5 });
-        
-        statNumbers.forEach(stat => observer.observe(stat));
-    }
-
-    animateNumber(element, target) {
-        let current = 0;
-        const increment = target / 100;
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
-            }
-            
-            if (target >= 1000) {
-                element.textContent = (current / 1000).toFixed(0) + 'k+';
-            } else {
-                element.textContent = Math.floor(current) + '+';
-            }
-        }, 20);
-    }
-
-    setupScrollAnimations() {
-        const animatedElements = document.querySelectorAll('.animate-on-scroll');
-        
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('animated');
-                }
-            });
-        }, { threshold: 0.1 });
-        
-        animatedElements.forEach(el => observer.observe(el));
-    }
-
-    setupScrollIndicator() {
-        const scrollArrow = document.querySelector('.scroll-arrow');
-        if (scrollArrow) {
-            scrollArrow.addEventListener('click', () => {
-                document.getElementById('como-funciona')?.scrollIntoView({
-                    behavior: 'smooth'
-                });
-            });
-        }
-    }
-
-    // ==================== MÉTODOS UTILITÁRIOS ====================
-
-    formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-    }
-}
-
-// ==================== INICIALIZAÇÃO ====================
-
-let app;
-
-document.addEventListener('DOMContentLoaded', () => {
-    app = new PeneirasBRApp();
 });
 
-// Expor globalmente para compatibilidade
-window.app = app;
 
+// Cache para armazenar endereços já consultados
+const enderecoCache = new Map();
+
+// Função para buscar endereço por CEP via ViaCEP
+async function buscarEnderecoPorCEP(cep) {
+    // Limpar CEP (remover hífen e espaços)
+    const cepLimpo = cep.replace(/\D/g, '');
+    
+    // Verificar se já está no cache
+    if (enderecoCache.has(cepLimpo)) {
+        console.log(`CEP ${cep} encontrado no cache:`, enderecoCache.get(cepLimpo));
+        return enderecoCache.get(cepLimpo);
+    }
+    
+    // Validar formato do CEP
+    if (cepLimpo.length !== 8) {
+        console.error(`CEP inválido: ${cep} (deve ter 8 dígitos)`);
+        return 'CEP inválido';
+    }
+    
+    try {
+        console.log(`Buscando CEP ${cep} (${cepLimpo}) na API ViaCEP...`);
+        const response = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log(`Resposta da API para CEP ${cep}:`, data);
+        
+        if (data.erro) {
+            throw new Error('CEP não encontrado na base de dados');
+        }
+        
+        if (!data.localidade || !data.uf) {
+            throw new Error('Dados incompletos retornados pela API');
+        }
+        
+        const endereco = `${data.localidade}, ${data.uf}`;
+        console.log(`Endereço formatado para CEP ${cep}: ${endereco}`);
+        
+        // Armazenar no cache
+        enderecoCache.set(cepLimpo, endereco);
+        
+        return endereco;
+    } catch (error) {
+        console.error(`Erro ao buscar CEP ${cep}:`, error.message);
+        // Retornar um endereço padrão em caso de erro
+        return 'Localização não disponível';
+    }
+}
+
+// Variáveis globais
+let userLocation = null;
+let currentResults = [];
+let currentFilter = 'all';
+
+// Elementos DOM
+const cepInput = document.getElementById('cep-input');
+const getLocationBtn = document.getElementById('get-location-btn');
+const searchBtn = document.getElementById('search-btn');
+const resultsSection = document.getElementById('results');
+const resultsContainer = document.getElementById('results-container');
+const noResults = document.getElementById('no-results');
+const loadingOverlay = document.getElementById('loading-overlay');
+const loadingAddress = document.getElementById('loading-address');
+const suggestionBtns = document.querySelectorAll('.suggestion-btn');
+const filterBtns = document.querySelectorAll('.filter-btn');
+const backToTopBtn = document.getElementById('back-to-top');
+const navToggle = document.getElementById('nav-toggle');
+const navMenu = document.querySelector('.nav-menu');
+const header = document.querySelector('.header');
+
+// Event Listeners
+document.addEventListener('DOMContentLoaded', function() {
+    initializeApp();
+});
+
+function initializeApp() {
+    console.log('Inicializando aplicação...');
+    
+    // Event listeners para busca
+    searchBtn.addEventListener('click', handleSearch);
+    cepInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            handleSearch();
+        }
+    });
+    
+    // Event listener para obter localização atual
+    getLocationBtn.addEventListener('click', getCurrentLocation);
+    
+    // Event listeners para sugestões
+    suggestionBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const location = this.getAttribute('data-location');
+            cepInput.value = location;
+            handleSearch();
+        });
+    });
+    
+    // Event listeners para filtros
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            setActiveFilter(filter);
+            applyFilter(filter);
+        });
+    });
+    
+    // Event listener para menu mobile
+    if (navToggle && navMenu) {
+        navToggle.addEventListener('click', toggleMobileMenu);
+        
+        // Fechar menu ao clicar em um link
+        const navLinks = document.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', closeMobileMenu);
+        });
+    }
+    
+    // Event listener para botão voltar ao topo
+    if (backToTopBtn) {
+        backToTopBtn.addEventListener('click', scrollToTop);
+    }
+    
+    // Event listeners para scroll
+    window.addEventListener('scroll', handleScroll);
+    
+    // Animações de scroll
+    setupScrollAnimations();
+    
+    // Animação dos números das estatísticas
+    animateStats();
+    
+    // Configurar indicador de scroll
+    setupScrollIndicator();
+}
+
+// Função para alternar menu mobile
+function toggleMobileMenu() {
+    navMenu.classList.toggle('active');
+    navToggle.classList.toggle('active');
+}
+
+// Função para fechar menu mobile
+function closeMobileMenu() {
+    navMenu.classList.remove('active');
+    navToggle.classList.remove('active');
+}
+
+// Função para lidar com scroll
+function handleScroll() {
+    const scrollY = window.scrollY;
+    
+    // Header com efeito de scroll
+    if (scrollY > 100) {
+        header.classList.add('scrolled');
+    } else {
+        header.classList.remove('scrolled');
+    }
+    
+    // Botão voltar ao topo
+    if (scrollY > 500) {
+        backToTopBtn.style.display = 'flex';
+        backToTopBtn.style.opacity = '1';
+    } else {
+        backToTopBtn.style.opacity = '0';
+        setTimeout(() => {
+            if (window.scrollY <= 500) {
+                backToTopBtn.style.display = 'none';
+            }
+        }, 300);
+    }
+}
+
+// Função para voltar ao topo
+function scrollToTop() {
+    window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+    });
+}
+
+// Função para configurar indicador de scroll
+function setupScrollIndicator() {
+    const scrollArrow = document.querySelector('.scroll-arrow');
+    if (scrollArrow) {
+        scrollArrow.addEventListener('click', () => {
+            document.getElementById('como-funciona').scrollIntoView({
+                behavior: 'smooth'
+            });
+        });
+    }
+}
+
+// Função para animar estatísticas
+function animateStats() {
+    const statNumbers = document.querySelectorAll('.stat-number');
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const target = parseInt(entry.target.getAttribute('data-target'));
+                animateNumber(entry.target, target);
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+    
+    statNumbers.forEach(stat => observer.observe(stat));
+}
+
+// Função para animar números
+function animateNumber(element, target) {
+    let current = 0;
+    const increment = target / 100;
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= target) {
+            current = target;
+            clearInterval(timer);
+        }
+        
+        if (target >= 1000) {
+            element.textContent = (current / 1000).toFixed(0) + 'k+';
+        } else {
+            element.textContent = Math.floor(current) + '+';
+        }
+    }, 20);
+}
+
+// Função para obter localização atual do usuário
+function getCurrentLocation() {
+    if (!navigator.geolocation) {
+        showNotification('Geolocalização não é suportada pelo seu navegador', 'error');
+        return;
+    }
+    
+    showLoading();
+    getLocationBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    navigator.geolocation.getCurrentPosition(
+        function(position) {
+            userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            
+            // Simular busca de endereço reverso
+            reverseGeocode(userLocation.lat, userLocation.lng)
+                .then(address => {
+                    cepInput.value = address;
+                    hideLoading();
+                    getLocationBtn.innerHTML = '<i class="fas fa-crosshairs"></i>';
+                    handleSearch();
+                })
+                .catch(error => {
+                    hideLoading();
+                    getLocationBtn.innerHTML = '<i class="fas fa-crosshairs"></i>';
+                    showNotification('Erro ao obter endereço', 'error');
+                });
+        },
+        function(error) {
+            hideLoading();
+            getLocationBtn.innerHTML = '<i class="fas fa-crosshairs"></i>';
+            
+            let message = 'Erro ao obter localização';
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    message = 'Permissão de localização negada';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    message = 'Localização indisponível';
+                    break;
+                case error.TIMEOUT:
+                    message = 'Tempo limite excedido';
+                    break;
+            }
+            showNotification(message, 'error');
+        },
+        {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000
+        }
+    );
+}
+
+// Função simulada de geocodificação reversa
+function reverseGeocode(lat, lng) {
+    return new Promise((resolve, reject) => {
+        // Simular delay de API
+        setTimeout(() => {
+            // Coordenadas aproximadas de algumas cidades brasileiras
+            const cities = [
+                { name: "São Paulo, SP", lat: -23.5505, lng: -46.6333 },
+                { name: "Rio de Janeiro, RJ", lat: -22.9068, lng: -43.1729 },
+                { name: "Belo Horizonte, MG", lat: -19.9167, lng: -43.9345 },
+                { name: "Porto Alegre, RS", lat: -30.0346, lng: -51.2177 },
+                { name: "Salvador, BA", lat: -12.9714, lng: -38.5014 },
+                { name: "Brasília, DF", lat: -15.8267, lng: -47.9218 }
+            ];
+            
+            // Encontrar cidade mais próxima
+            let closestCity = cities[0];
+            let minDistance = calculateDistance(lat, lng, cities[0].lat, cities[0].lng);
+            
+            cities.forEach(city => {
+                const distance = calculateDistance(lat, lng, city.lat, city.lng);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestCity = city;
+                }
+            });
+            
+            resolve(closestCity.name);
+        }, 1000);
+    });
+}
+
+// Função para calcular distância entre duas coordenadas
+function calculateDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Raio da Terra em km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Função principal de busca
+async function handleSearch() {
+    const cep = cepInput.value.replace(/\D/g, '');
+
+    if (cep.length !== 8) {
+        showNotification('Por favor, digite um CEP válido com 8 dígitos.', 'warning');
+        cepInput.focus();
+        return;
+    }
+
+    showLoading(true);
+
+    try {
+        console.log(`Buscando endereço para CEP do usuário: ${cep}`);
+        
+        // Buscar endereço do CEP digitado pelo usuário
+        const enderecoUsuario = await buscarEnderecoPorCEP(cep);
+        
+        if (enderecoUsuario === 'CEP inválido' || enderecoUsuario === 'Localização não disponível') {
+            showNotification('CEP não encontrado. Verifique o número digitado.', 'error');
+            hideLoading();
+            return;
+        }
+
+        console.log(`Endereço do usuário encontrado: ${enderecoUsuario}`);
+        
+        // Aplicar o endereço do usuário a TODAS as peneiras
+        peneirasData.forEach(peneira => {
+            peneira.endereco = enderecoUsuario;
+        });
+        
+        console.log(`Endereço "${enderecoUsuario}" aplicado a todas as ${peneirasData.length} peneiras`);
+
+        loadingAddress.textContent = `Buscando peneiras próximas a ${enderecoUsuario}`;
+        document.getElementById('loading-neighborhood').textContent = `Todas as peneiras mostrarão: ${enderecoUsuario}`;
+
+        // Simular delay de busca
+        setTimeout(() => {
+            searchPeneiras(enderecoUsuario);
+        }, 2500);
+
+    } catch (error) {
+        console.error('Erro ao buscar CEP:', error);
+        showNotification('Erro ao buscar CEP. Tente novamente.', 'error');
+        hideLoading();
+    }
+}
+
+// Função para buscar peneiras
+function searchPeneiras(location) {
+    try {
+        // Simular geocodificação da localização digitada
+        const userCoords = geocodeLocation(location);
+        
+        // Calcular distâncias e filtrar resultados
+        const results = peneirasData.map(peneira => {
+            const distance = calculateDistance(
+                userCoords.lat, userCoords.lng,
+                peneira.lat, peneira.lng
+            );
+            
+            return {
+                ...peneira,
+                distancia: Math.round(distance * 10) / 10
+            };
+        }).sort((a, b) => a.distancia - b.distancia);
+        
+        // Filtrar apenas peneiras em um raio de 100km
+        currentResults = results.filter(peneira => peneira.distancia <= 100);
+        
+        hideLoading();
+        displayResults(currentResults);
+        
+    } catch (error) {
+        hideLoading();
+        showNotification('Erro ao buscar peneiras. Tente novamente.', 'error');
+    }
+}
+
+// Função simulada de geocodificação
+function geocodeLocation(location) {
+    // Coordenadas simuladas baseadas na localização
+    const locationMap = {
+        'são paulo': { lat: -23.5505, lng: -46.6333 },
+        'rio de janeiro': { lat: -22.9068, lng: -43.1729 },
+        'belo horizonte': { lat: -19.9167, lng: -43.9345 },
+        'porto alegre': { lat: -30.0346, lng: -51.2177 },
+        'salvador': { lat: -12.9714, lng: -38.5014 },
+        'brasília': { lat: -15.8267, lng: -47.9218 },
+        'santos': { lat: -23.9618, lng: -46.3322 },
+        'campinas': { lat: -22.9056, lng: -47.0608 }
+    };
+    
+    const normalizedLocation = location.toLowerCase();
+    
+    // Procurar por correspondência parcial
+    for (const [key, coords] of Object.entries(locationMap)) {
+        if (normalizedLocation.includes(key) || key.includes(normalizedLocation.split(',')[0].trim().toLowerCase())) {
+            return coords;
+        }
+    }
+    
+    // Retornar São Paulo como padrão
+    return locationMap['são paulo'];
+}
+
+// Função para definir filtro ativo
+function setActiveFilter(filter) {
+    filterBtns.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-filter') === filter) {
+            btn.classList.add('active');
+        }
+    });
+    currentFilter = filter;
+}
+
+// Função para aplicar filtro
+function applyFilter(filter) {
+    let filteredResults = [...currentResults];
+    
+    switch (filter) {
+        case 'distance':
+            filteredResults.sort((a, b) => a.distancia - b.distancia);
+            break;
+        case 'date':
+            filteredResults.sort((a, b) => new Date(a.data) - new Date(b.data));
+            break;
+        default:
+            // 'all' - manter ordem original
+            break;
+    }
+    
+    displayResults(filteredResults);
+}
+
+// Função para exibir resultados
+function displayResults(results) {
+    resultsSection.style.display = 'block';
+    resultsSection.scrollIntoView({ behavior: 'smooth' });
+    
+    if (results.length === 0) {
+        resultsContainer.style.display = 'none';
+        noResults.style.display = 'block';
+        return;
+    }
+    
+    noResults.style.display = 'none';
+    resultsContainer.style.display = 'grid';
+    resultsContainer.innerHTML = '';
+    
+    // Criar cards
+    results.forEach((peneira, index) => {
+        const resultCard = createResultCard(peneira);
+        resultsContainer.appendChild(resultCard);
+        
+        // Animação escalonada
+        setTimeout(() => {
+            resultCard.classList.add('animate-fade-in-up');
+        }, index * 100);
+    });
+}
+
+// FUNÇÃO MODIFICADA PARA CRIAR CARD DE RESULTADO - COM BOTÃO "QUERO PARTICIPAR"
+function createResultCard(peneira) {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    
+    const dataFormatada = formatDate(peneira.data);
+    const prazoFormatado = formatDate(peneira.prazoInscricao);
+    const distanciaTexto = peneira.distancia < 1 ? 
+        `${Math.round(peneira.distancia * 1000)}m` : 
+        `${peneira.distancia}km`;
+    
+    // Determinar status e informações de vagas de forma mais elegante
+    const statusInfo = getStatusInfo(peneira);
+    const vagasInfo = getVagasInfo(peneira);
+    const prazoInfo = getPrazoInfo(peneira);
+    
+    card.innerHTML = `
+        <div class="card-header">
+            <div class="card-title-section">
+                <h3 class="card-title">${peneira.titulo}</h3>
+                <p class="card-club">${peneira.clube}</p>
+            </div>
+            <div class="card-badges">
+                <span class="distance-badge">${distanciaTexto}</span>
+                ${statusInfo.badge}
+            </div>
+        </div>
+        
+        ${statusInfo.banner}
+        
+        <div class="card-content">
+            <div class="event-details">
+                <div class="detail-row primary">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>${dataFormatada} às ${peneira.horario}</span>
+                </div>
+                <div class="detail-row">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span>${peneira.endereco || 'Endereço será definido após busca'}</span>
+                </div>
+                <div class="detail-row">
+                    <i class="fas fa-users"></i>
+                    <span>${peneira.categoria}</span>
+                </div>
+            </div>
+            
+            ${vagasInfo.html}
+            ${prazoInfo.html}
+        </div>
+        
+        <div class="card-actions">
+            ${peneira.status === 'aberta' ? `
+                <button class="btn-primary" onclick="openPeneiraModal(${peneira.id})">
+                    <i class="fas fa-futbol"></i>
+                    <span>Quero Participar</span>
+                </button>
+            ` : `
+                <button class="btn-disabled" disabled>
+                    <i class="fas fa-lock"></i>
+                    <span>Encerrada</span>
+                </button>
+            `}
+        </div>
+    `;
+    
+    // Adicionar classe de status ao card
+    card.classList.add(`card-${peneira.status}`);
+    
+    return card;
+}
+
+// Função refinada para obter informações de status
+function getStatusInfo(peneira) {
+    if (peneira.status === 'encerrada') {
+        return {
+            badge: '<span class="status-badge status-closed">Encerrada</span>',
+            banner: '<div class="status-banner closed"><i class="fas fa-times-circle"></i><span>Inscrições Encerradas</span></div>'
+        };
+    }
+    
+    // Para peneiras abertas, mostrar badge de disponibilidade baseado nas vagas
+    let availabilityBadge = '';
+    if (peneira.vagasDisponiveis <= 5) {
+        availabilityBadge = '<span class="status-badge status-urgent">Últimas Vagas</span>';
+    } else if (peneira.vagasDisponiveis <= 10) {
+        availabilityBadge = '<span class="status-badge status-limited">Vagas Limitadas</span>';
+    } else {
+        availabilityBadge = '<span class="status-badge status-open">Disponível</span>';
+    }
+    
+    return {
+        badge: availabilityBadge,
+        banner: ''
+    };
+}
+
+// Função refinada para obter informações de vagas
+function getVagasInfo(peneira) {
+    if (peneira.status !== 'aberta') {
+        return { html: '' };
+    }
+    
+    const percentualOcupado = ((peneira.totalVagas - peneira.vagasDisponiveis) / peneira.totalVagas) * 100;
+    
+    return {
+        html: `
+            <div class="availability-section">
+                <div class="availability-header">
+                    <span class="availability-label">Disponibilidade</span>
+                    <span class="availability-count">${peneira.vagasDisponiveis} de ${peneira.totalVagas} vagas</span>
+                </div>
+                <div class="availability-bar">
+                    <div class="availability-progress" style="width: ${percentualOcupado}%"></div>
+                </div>
+            </div>
+        `
+    };
+}
+
+// Função refinada para obter informações de prazo
+function getPrazoInfo(peneira) {
+    if (peneira.status !== 'aberta') {
+        return { html: '' };
+    }
+    
+    const diasRestantes = getDiasRestantes(peneira.prazoInscricao);
+    const prazoFormatado = formatDate(peneira.prazoInscricao);
+    
+    return {
+        html: `
+            <div class="deadline-section">
+                <div class="deadline-info">
+                    <i class="fas fa-clock"></i>
+                    <div class="deadline-text">
+                        <span class="deadline-label">Prazo de inscrição</span>
+                        <span class="deadline-date">${prazoFormatado}</span>
+                        <span class="deadline-remaining">${diasRestantes}</span>
+                    </div>
+                </div>
+            </div>
+        `
+    };
+}
+
+// Função para calcular dias restantes
+function getDiasRestantes(prazoInscricao) {
+    const hoje = new Date();
+    const prazo = new Date(prazoInscricao);
+    const diffTime = prazo - hoje;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+        return 'Prazo expirado';
+    } else if (diffDays === 0) {
+        return 'Último dia!';
+    } else if (diffDays === 1) {
+        return 'Termina amanhã';
+    } else if (diffDays <= 7) {
+        return `${diffDays} dias restantes`;
+    } else {
+        return `${diffDays} dias restantes`;
+    }
+}
+
+// Função para formatar data
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    };
+    return date.toLocaleDateString('pt-BR', options);
+}
+
+// NOVA FUNÇÃO: Abrir modal com informações da peneira
+function openPeneiraModal(peneiraId) {
+    const peneira = peneirasData.find(p => p.id === peneiraId);
+    if (!peneira) return;
+    
+    // Preencher informações do modal
+    document.getElementById('modal-title').textContent = peneira.titulo;
+    document.getElementById('modal-clube').textContent = peneira.clube;
+    document.getElementById('modal-data-horario').textContent = `${formatDate(peneira.data)} às ${peneira.horario}`;
+    document.getElementById('modal-endereco').textContent = peneira.endereco || 'Endereço será definido após busca';
+    document.getElementById('modal-categoria').textContent = peneira.categoria;
+    document.getElementById('modal-requisitos').textContent = peneira.requisitos;
+    document.getElementById('modal-contato').textContent = peneira.contato;
+    document.getElementById('modal-prazo').textContent = formatDate(peneira.prazoInscricao);
+    
+    // Informações de vagas (apenas para peneiras abertas)
+    if (peneira.status === 'aberta') {
+        const percentualOcupado = ((peneira.totalVagas - peneira.vagasDisponiveis) / peneira.totalVagas) * 100;
+        document.getElementById('modal-vagas').textContent = `${peneira.vagasDisponiveis} vagas disponíveis de ${peneira.totalVagas} total`;
+        document.getElementById('modal-availability-progress').style.width = `${percentualOcupado}%`;
+        document.getElementById('modal-vagas-info').style.display = 'block';
+    } else {
+        document.getElementById('modal-vagas-info').style.display = 'none';
+    }
+    
+    // Mostrar modal
+    const modal = document.getElementById('peneira-modal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    
+    // Fechar modal ao clicar fora dele
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closePeneiraModal();
+        }
+    });
+}
+
+// NOVA FUNÇÃO: Fechar modal
+function closePeneiraModal() {
+    const modal = document.getElementById('peneira-modal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Event listener para fechar modal com ESC
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePeneiraModal();
+    }
+});
+
+// Função para mostrar loading
+function showLoading(isCepSearch = false) {
+    if (!isCepSearch) {
+        loadingAddress.textContent = 'Buscando peneiras...';
+    }
+    loadingOverlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Função para esconder loading
+function hideLoading() {
+    loadingOverlay.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// Função para mostrar notificações
+function showNotification(message, type = 'info') {
+    // Remover notificação existente
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    
+    const container = document.getElementById('notification-container');
+    container.appendChild(notification);
+    
+    // Remover notificação após 5 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Função para configurar animações de scroll
+function setupScrollAnimations() {
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+    
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('animate-fade-in-up');
+                observer.unobserve(entry.target);
+            }
+        });
+    }, observerOptions);
+    
+    // Observar elementos que devem ser animados
+    const animatedElements = document.querySelectorAll('.step-card, .feature-card, .testimonial-card');
+    animatedElements.forEach(el => observer.observe(el));
+}
